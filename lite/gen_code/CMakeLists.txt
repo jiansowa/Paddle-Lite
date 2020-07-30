@@ -16,6 +16,7 @@ lite_cc_test(test_gen_code SRCS gen_code_test.cc
         ARM_DEPS ${arm_kernels}
         NPU_DEPS ${npu_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        NNA_DEPS ${nna_kernels}
         XPU_DEPS ${xpu_kernels}
         CL_DEPS ${opencl_kernels}
         FPGA_DEPS ${fpga_kernels}
@@ -45,6 +46,7 @@ lite_cc_test(test_generated_code SRCS generated_code_test.cc DEPS __generated_co
     ARM_DEPS ${arm_kernels}
     NPU_DEPS ${npu_kernels}
     RKNPU_DEPS ${rknpu_kernels}
+    NNA_DEPS ${nna_kernels}
     XPU_DEPS ${xpu_kernels}
     CL_DEPS ${opencl_kernels}
     FPGA_DEPS ${fpga_kernels}

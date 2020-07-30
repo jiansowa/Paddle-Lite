@@ -105,7 +105,8 @@ function build_opt {
       -DLITE_ON_MODEL_OPTIMIZE_TOOL=ON \
       -DWITH_TESTING=OFF \
       -DLITE_BUILD_EXTRA=ON \
-      -DWITH_MKL=OFF
+      -DWITH_MKL=OFF \
+      -DCMAKE_BUILD_TYPE=Debug
     make opt -j$NUM_PROC
 }
 

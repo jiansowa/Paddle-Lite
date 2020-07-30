@@ -39,6 +39,7 @@ if ((NOT LITE_ON_TINY_PUBLISH) AND (LITE_WITH_CUDA OR LITE_WITH_X86 OR LITE_WITH
                   NPU_DEPS ${npu_kernels}
                   APU_DEPS ${apu_kernels}
                   RKNPU_DEPS ${rknpu_kernels}
+                  NNA_DEPS ${nna_kernels}
                   )
 
     add_dependencies(paddle_light_api_shared op_list_h kernel_list_h)
@@ -69,7 +70,10 @@ else()
             # Need to add RKNPU runtime libs dependency
             target_link_libraries(paddle_light_api_shared ${rknpu_builder_libs} ${rknpu_runtime_libs})
         endif()
-
+        if (LITE_WITH_NNA)
+            # Need to add IMG NNA runtime libs (libhiai.so) dependency
+            #target_link_libraries(paddle_light_api_shared ${nna_builder_libs} ${nna_runtime_libs})
+        endif()
     endif()
 endif()
 
@@ -101,6 +105,11 @@ if(LITE_WITH_RKNPU)
     set(cxx_api_deps ${cxx_api_deps} ${rknpu_deps})
 endif()
 
+if(LITE_WITH_NNA)
+    set(light_api_deps ${light_api_deps} ${nna_deps})
+    set(cxx_api_deps ${cxx_api_deps} ${nna_deps})
+endif()
+
 
 message(STATUS "get ops ${ops}")
 message(STATUS "get X86 kernels ${x86_kernels}")
@@ -115,6 +124,7 @@ message(STATUS "get RKNPU kernels ${rknpu_kernels}")
 message(STATUS "get FPGA kernels ${fpga_kernels}")
 message(STATUS "get BM kernels ${bm_kernels}")
 message(STATUS "get MLU kernels ${mlu_kernels}")
+message(STATUS "get NNA kernels ${nna_kernels}")
 
 # for full api
 if (NOT LITE_ON_TINY_PUBLISH)
@@ -132,6 +142,7 @@ if (NOT LITE_ON_TINY_PUBLISH)
                         APU_DEPS ${apu_kernels}
                         RKNPU_DEPS ${rknpu_kernels}
                         BM_DEPS ${bm_kernels}
+                        NNA_DEPS ${nna_kernels}
                         CL_DEPS ${opencl_kernels}
                         FPGA_DEPS ${fpga_kernels})
 endif()
@@ -157,6 +168,7 @@ lite_cc_library(light_api SRCS light_api.cc
         CL_DEPS ${opencl_kernels}
         FPGA_DEPS ${fpga_kernels}
         BM_DEPS ${bm_kernels}
+        NNA_DEPS ${nna_kernels}
         MLU_DEPS ${mlu_kernels})
 
 include(ExternalProject)
@@ -179,6 +191,7 @@ if(WITH_TESTING)
        FPGA_DEPS ${fpga_kernels}
        BM_DEPS ${bm_kernels}
        MLU_DEPS ${mlu_kernels}
+       NNA_DEPS ${nna_kernels}
        EXCLUDE_COMPILE_DEPS "ON"
        ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
             --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
@@ -305,6 +318,7 @@ if (NOT LITE_ON_TINY_PUBLISH)
         APU_DEPS ${apu_kernels}
         CL_DEPS ${opencl_kernels}
         FPGA_DEPS ${fpga_kernels}
+        NNA_DEPS ${nna_kernels}
         BM_DEPS ${bm_kernels})
     # The final inference library for just MobileConfig.
     bundle_static_library(paddle_api_full paddle_api_full_bundled bundle_full_api)
@@ -334,6 +348,7 @@ lite_cc_test(test_apis SRCS apis_test.cc
         RKNPU_DEPS ${rknpu_kernels}
         BM_DEPS ${bm_kernels}
         MLU_DEPS ${mlu_kernels}
+        NNA_DEPS ${nna_kernels}
         ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model
         --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
@@ -374,6 +389,7 @@ lite_cc_test(test_paddle_api SRCS paddle_api_test.cc DEPS paddle_api_full paddle
   FPGA_DEPS ${fpga_kernels}
   BM_DEPS ${bm_kernels}
   MLU_DEPS ${mlu_kernels}
+  NNA_DEPS ${nna_kernels}
   ARGS --model_dir=${LITE_MODEL_DIR}/lite_naive_model SERIAL)
 if (WITH_TESTING)
     add_dependencies(test_paddle_api extern_lite_download_lite_naive_model_tar_gz)
@@ -392,6 +408,7 @@ if(NOT IOS)
         CL_DEPS ${opencl_kernels}
         BM_DEPS ${bm_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        NNA_DEPS ${nna_kernels}
         FPGA_DEPS ${fpga_kernels}
         X86_DEPS ${x86_kernels}
         CUDA_DEPS ${cuda_kernels})
@@ -407,6 +424,7 @@ if(NOT IOS)
         CL_DEPS ${opencl_kernels}
         BM_DEPS ${bm_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        NNA_DEPS ${nna_kernels}
         FPGA_DEPS ${fpga_kernels}
         X86_DEPS ${x86_kernels}
         CUDA_DEPS ${cuda_kernels})
@@ -422,6 +440,7 @@ if(NOT IOS)
         CL_DEPS ${opencl_kernels}
         BM_DEPS ${bm_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        NNA_DEPS ${nna_kernels}
         FPGA_DEPS ${fpga_kernels}
         X86_DEPS ${x86_kernels}
         CUDA_DEPS ${cuda_kernels})
@@ -431,6 +450,7 @@ if(NOT IOS)
         ARM_DEPS ${arm_kernels}
         CV_DEPS paddle_cv_arm
         NPU_DEPS ${npu_kernels}
+        NNA_DEPS ${nna_kernels}
         XPU_DEPS ${xpu_kernels}
         RKNPU_DEPS ${rknpu_kernels}
         MLU_DEPS ${mlu_kernels}
@@ -448,6 +468,7 @@ if(NOT IOS)
         APU_DEPS ${apu_kernels}
         XPU_DEPS ${xpu_kernels}
         RKNPU_DEPS ${rknpu_kernels}
+        NNA_DEPS ${nna_kernels}
         MLU_DEPS ${mlu_kernels}
         CL_DEPS ${opencl_kernels}
 	BM_DEPS ${bm_kernels}
@@ -461,6 +482,7 @@ if(NOT IOS)
         CV_DEPS paddle_cv_arm
         NPU_DEPS ${npu_kernels}
         RKNPU_DEPS ${npu_kernels}
+        NNA_DEPS ${nna_kernels}
         XPU_DEPS ${xpu_kernels}
         APU_DEPS ${apu_kernels}
         CL_DEPS ${opencl_kernels}

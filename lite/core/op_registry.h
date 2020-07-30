@@ -270,6 +270,16 @@ class KernelRegistry final {
                                       PRECISION(kInt8),
                                       DATALAYOUT(kNCHW)> *,  //
 
+              KernelRegistryForTarget<TARGET(kNNA),
+                                      PRECISION(kAny),
+                                      DATALAYOUT(kAny)> *,  //
+              KernelRegistryForTarget<TARGET(kNNA),
+                                      PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kNNA),
+                                      PRECISION(kInt8),
+                                      DATALAYOUT(kNCHW)> *,  //
+
               KernelRegistryForTarget<TARGET(kFPGA),
                                       PRECISION(kFloat),
                                       DATALAYOUT(kNCHW)> *,  //

@@ -174,6 +174,10 @@ if (LITE_WITH_MLU)
 add_definitions("-DLITE_WITH_MLU")
 endif()
 
+if (LITE_WITH_NNA)
+add_definitions("-DLITE_WITH_NNA")
+endif()
+
 if (LITE_WITH_PROFILE)
     add_definitions("-DLITE_WITH_PROFILE")
 endif()

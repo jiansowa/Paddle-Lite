@@ -54,8 +54,11 @@ void MemoryOptimizePass::CollectLifeCycleByDevice(
                                                       "feed",
                                                       "fetch"};
 
-  auto insert_invalid_op_nodes_for_specific_target = [&](
-      std::unordered_set<std::string> op_node_set, TargetType specific_target) {
+  auto insert_invalid_op_nodes_for_specific_target = [&](std::unordered_set<
+                                                             std::string>
+                                                             op_node_set,
+                                                         TargetType
+                                                             specific_target) {
     std::unordered_set<std::string> invalid_op_nodes_opencl = {"layout", "fc"};
     for (auto& op_node : graph->StmtTopologicalOrder()) {
       if (!op_node->IsStmt()) continue;
@@ -317,4 +320,5 @@ REGISTER_MIR_PASS(memory_optimize_pass, paddle::lite::mir::MemoryOptimizePass)
                      TARGET(kXPU),
                      TARGET(kBM),
                      TARGET(kRKNPU),
-                     TARGET(kAPU)});
+                     TARGET(kAPU),
+                     TARGET(kNNA)});
