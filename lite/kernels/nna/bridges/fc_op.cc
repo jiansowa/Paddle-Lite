@@ -77,7 +77,7 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
   if (graph->Has(input_name)) {
     input_node = graph->Get(input_name);
   } else {
-    // input_node = graph->Add(input_name, *input);
+    LOG(FATAL) << "[NNA] input node: " << input_name << ", could not be found";
   }
 
   // weight tensor
@@ -85,10 +85,10 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
   bool per_channel = isScalesPerChannel(weight_scale);
   uint8_t* weights_u8 = graph->GetBufromPool(w_dims.production());
   if (enable_int8) {
-    // qnt.type = IMGDNN_TYPE_Q_I8;
     qnt.type = IMGDNN_TYPE_Q_U8;
     if (per_channel) {
-      LOG(FATAL) << "[NNA] per-channel quantization is not supported for FC";
+      LOG(FATAL) <<
+        "[NNA] FC per-channel quantization is not supported for Mirage";
     } else {
       qnt.scales.push_back(weight_scale.at(0));
       qnt.zero_points.push_back(128);
@@ -97,7 +97,6 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
     for (int i = 0; i < w_dims.production(); i++)
       weights_u8[i] = static_cast<uint8_t>(weight_src[i] + 128);
   } else {
-    // qnt.type = IMGDNN_TYPE_F32;
     LOG(FATAL) << "[NNA] PaddleLite Only 8-bits quantization.";
   }
   weight_node = graph->Add(

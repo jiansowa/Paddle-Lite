@@ -315,17 +315,6 @@ imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
   imgdnn_tensor_descriptor desc_4;
   imgdnnGetTensorDescriptor(fcw_int_tensor, &desc_4);
 
-  /*
-    imgdnn_tensor bias_tensor;
-    imgdnn_tensor_descriptor ba_desc;
-
-    imgdnnGetTensorDescriptor(fcw_tensor, &ba_desc);
-
-    buffer_size = imgdnnGetDescriptorSize(&ba_desc, &err);
-    ba_data.push_back((float*)calloc(1, buffer_size));
-    memcpy(ba_data.back(), &network_blob[biasOffset], buffer_size);
-    bias_tensor = imgdnnNetworkFixedInput(net, &ba_desc, ba_data.back(), &err);
-  */
   fcb_tensor = imgdnnNetworkBinaryOp(
       net, fcw_int_tensor, bias_tensor, IMGDNN_OPERATION_ADD, &err);
 
