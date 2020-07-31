@@ -309,14 +309,18 @@ imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
   fcw_tensor = imgdnnNetworkBinaryOp(
       net, reshaped_input, weights_tensor, IMGDNN_OPERATION_MATMUL, &err);
 
-  imgdnn_tensor fcw_int_tensor =
-      imgdnnNetworkCastOp(net, fcw_tensor, IMGDNN_TYPE_I32, nullptr, &err);
+  if (bias_tensor) {
+    imgdnn_tensor fcw_int_tensor =
+        imgdnnNetworkCastOp(net, fcw_tensor, IMGDNN_TYPE_I32, nullptr, &err);
 
-  imgdnn_tensor_descriptor desc_4;
-  imgdnnGetTensorDescriptor(fcw_int_tensor, &desc_4);
+    imgdnn_tensor_descriptor desc_4;
+    imgdnnGetTensorDescriptor(fcw_int_tensor, &desc_4);
 
-  fcb_tensor = imgdnnNetworkBinaryOp(
-      net, fcw_int_tensor, bias_tensor, IMGDNN_OPERATION_ADD, &err);
+    fcb_tensor = imgdnnNetworkBinaryOp(
+        net, fcw_int_tensor, bias_tensor, IMGDNN_OPERATION_ADD, &err);
+  } else {
+    fcb_tensor = fcw_tensor;
+  }
 
   imgdnn_tensor_descriptor desc;
   imgdnnGetTensorDescriptor(input_tensor, &desc);
