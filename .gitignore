@@ -118,5 +118,8 @@ metal/MobileNetDemo/MobileNetDemo/Resources
 
 build*
 
+# jiansowa
+tags
 cscope.*
 filenametags
+third-party/*
