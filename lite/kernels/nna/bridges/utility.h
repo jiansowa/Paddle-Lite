@@ -28,6 +28,7 @@ namespace lite {
 namespace subgraph {
 namespace nna {
 
+
 struct TensorInfo {
   imgdnn_type type;
   std::vector<float> scales;

@@ -157,11 +157,10 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
     bias_tensor = bias_node->data();
   }
 
-  ConvNetBuilder& builder = graph->GetBuilder();
   imgdnn_quant_param output_quant_param;
   output_quant_param.scale = output_scale;
   output_quant_param.zero_point = 128;
-  imgdnn_tensor fc_out_tensor = builder.createFullyConnectedLayer(
+  imgdnn_tensor fc_out_tensor = graph->GetBuilder()->createFullyConnectedLayer(
       input_node->data(), weight_node->data(), bias_tensor, output_quant_param);
 
   imgdnn_tensor_descriptor desc;

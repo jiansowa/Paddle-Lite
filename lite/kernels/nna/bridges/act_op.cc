@@ -52,12 +52,8 @@ int ActConverter(void* ctx, OpLite* op, KernelBase* kernel) {
     LOG(WARNING) << "ActConverter:x_node not in graph";
   }
 
-  imgdnn_err_code errcode_ret;
-  ConvNetBuilder& builder = graph->GetBuilder();
-  imgdnn_network network = builder.GetNetwork();
-
-  imgdnn_tensor relu_output = imgdnnNetworkReLUOp(
-      network, x_node->data(), true, 0.0, false, 0.0, 0.0, &errcode_ret);
+  imgdnn_tensor relu_output = graph->GetBuilder()->createReLULayer(
+      x_node->data(), true, 0.0, false, 0.0, 0.0);
 
   imgdnn_tensor_descriptor desc;
   imgdnn_err_code err = imgdnnGetTensorDescriptor(relu_output, &desc);

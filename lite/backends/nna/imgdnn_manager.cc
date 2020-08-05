@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nn_builder.h"  // NOLINT
+#include "imgdnn_manager.h"  // NOLINT
 #include <utility>
-#include "lite/kernels/nna/bridges/graph.h"
-#include "lite/kernels/nna/bridges/utility.h"
+//#include "lite/kernels/nna/bridges/graph.h"
 
 namespace paddle {
 namespace lite {
-namespace subgraph {
 namespace nna {
 
 static void err_callback(imgdnn_report_flags flags,
@@ -48,58 +46,22 @@ static void err_callback(imgdnn_report_flags flags,
   std::cerr << msg_prefix << ": " << error_message << std::endl;
 }
 
-ConvNetBuilder::ConvNetBuilder() {
-  // imgdnn_err_code errcode_ret;
-  net = imgdnnCreateNetwork(&err);
-  // CHECK(err == IMGDNN_SUCCESS)
-  //  << "Create ImgdnnNetwork fails1";
-  err = imgdnnSetErrorHandler(err_callback);
-  // CHECK(err == IMGDNN_SUCCESS)
-  //  << "Could not set callback for error handling";
+ImgdnnManager::ImgdnnManager() {
+  err_ = imgdnnSetErrorHandler(err_callback);
+  net_ = imgdnnCreateNetwork(&err_);
+  ASSERT(err_ != IMGDNN_SUCCESS, "CreateNetwork failed!");
+
+  imgdnn_device device;
+  unsigned int num_devices;
+  err_ = imgdnnGetDevices(IMGDNN_DEVICE_TYPE_ALL, 1, &device, &num_devices);
+  ASSERT(err_ != IMGDNN_SUCCESS, "GetDevices failed!");
+  context_ = imgdnnCreateContext(num_devices, &device, 0, &err_);
+  ASSERT(err_ != IMGDNN_SUCCESS, "CreateContext failed!");
+  binding_ = imgdnnCreateBinding(&err_);
+  ASSERT(err_ != IMGDNN_SUCCESS, "CreateBinding failed!");
 }
 
-imgdnn_tensor ConvNetBuilder::createFixedInputTensorFloat(
-    const void *const fixed_data, const lite::DDim &dims) {
-  imgdnn_tensor_descriptor desc;
-  desc.type = IMGDNN_TYPE_F32;
-  desc.dimensions = (unsigned)dims.size();
-  for (uint32_t i = 0; i < dims.size(); ++i) desc.size[i] = dims[i];
-
-  imgdnn_tensor out_tensor =
-      imgdnnNetworkFixedInput(net, &desc, fixed_data, &err);
-  return out_tensor;
-}
-
-imgdnn_tensor ConvNetBuilder::createFixedInputTensorQuantized(
-    PrecisionType precision,
-    const void *const fixed_data,
-    const lite::DDim &dims,
-    std::vector<float> scales,
-    unsigned axis,
-    unsigned channels) {
-  imgdnn_tensor_descriptor desc;
-  imgdnn_per_axis_quant_param *axis_qp;
-  std::vector<int> zero_ps;
-  if (precision == paddle::lite_api::PrecisionType::kInt8) {
-    desc.type = IMGDNN_TYPE_QPA_I8;
-    zero_ps.resize(scales.size());  // default 0
-    axis_qp = imgdnnCreatePerAxisQuantParam(
-        axis, channels, scales.data(), zero_ps.data());
-    CHECK(axis_qp != nullptr);
-    desc.quant_param.per_axis = axis_qp;
-  }
-
-  desc.dimensions = (unsigned)dims.size();
-  for (uint32_t i = 0; i < dims.size(); ++i) desc.size[i] = dims[i];
-
-  imgdnn_tensor out_tensor =
-      imgdnnNetworkFixedInput(net, &desc, fixed_data, &err);
-  imgdnnDestroyPerAxisQuantParam(desc.quant_param.per_axis);
-
-  return out_tensor;
-}
-
-imgdnn_tensor ConvNetBuilder::createConvolutionLayer(
+imgdnn_tensor ImgdnnManager::createConvolutionLayer(
     imgdnn_tensor input_tensor,
     imgdnn_tensor weights_tensor,
     imgdnn_tensor bias_tensor,
@@ -114,24 +76,24 @@ imgdnn_tensor ConvNetBuilder::createConvolutionLayer(
     // transpose weight
     int order[4] = {1, 0, 2, 3};
     imgdnn_tensor transport_weights =
-        imgdnnNetworkTransposeOp(net, weights_tensor, order, &err);
-    convw_tensor = imgdnnNetworkDepthConvolution2dOp_v2(net,
+        imgdnnNetworkTransposeOp(net_, weights_tensor, order, &err_);
+    convw_tensor = imgdnnNetworkDepthConvolution2dOp_v2(net_,
                                                         input_tensor,
                                                         transport_weights,
                                                         stride,
                                                         pad_begin,
                                                         pad_end,
                                                         dilation,
-                                                        &err);
+                                                        &err_);
   } else {
-    convw_tensor = imgdnnNetworkConvolution2dOp_v2(net,
+    convw_tensor = imgdnnNetworkConvolution2dOp_v2(net_,
                                                    input_tensor,
                                                    weights_tensor,
                                                    stride,
                                                    pad_begin,
                                                    pad_end,
                                                    dilation,
-                                                   &err);
+                                                   &err_);
   }
 
   // debug
@@ -143,21 +105,21 @@ imgdnn_tensor ConvNetBuilder::createConvolutionLayer(
   imgdnn_tensor conv2d_tensor;
   if (bias_tensor) {
     imgdnn_tensor convw_int_tensor =
-        imgdnnNetworkCastOp(net, convw_tensor, IMGDNN_TYPE_I32, nullptr, &err);
+        imgdnnNetworkCastOp(net_, convw_tensor, IMGDNN_TYPE_I32, nullptr, &err_);
 
     imgdnn_tensor_descriptor bias_desc;
     imgdnnGetTensorDescriptor(convw_tensor, &bias_desc);
 
     imgdnn_tensor broadcast2_tensor;
     broadcast2_tensor =
-        imgdnnNetworkBroadcastOp(net, bias_tensor, 2, bias_desc.size[2], &err);
+        imgdnnNetworkBroadcastOp(net_, bias_tensor, 2, bias_desc.size[2], &err_);
 
     imgdnn_tensor broadcast3_tensor;
     broadcast3_tensor = imgdnnNetworkBroadcastOp(
-        net, broadcast2_tensor, 3, bias_desc.size[3], &err);
+        net_, broadcast2_tensor, 3, bias_desc.size[3], &err_);
 
     conv2d_tensor = imgdnnNetworkBinaryOp(
-        net, convw_int_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err);
+        net_, convw_int_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err_);
   } else {
     conv2d_tensor = convw_tensor;
   }
@@ -167,13 +129,13 @@ imgdnn_tensor ConvNetBuilder::createConvolutionLayer(
   imgdnnGetTensorDescriptor(input_tensor, &desc);
   if (desc.type == IMGDNN_TYPE_Q_I8 || desc.type == IMGDNN_TYPE_Q_U8) {
     conv2d_out_tensor = imgdnnNetworkCastOp(
-        net, conv2d_tensor, desc.type, &dst_quant_param, &err);
+        net_, conv2d_tensor, desc.type, &dst_quant_param, &err_);
   }
 
   return conv2d_out_tensor;
 }
 
-imgdnn_tensor ConvNetBuilder::createBatchNormLayer(imgdnn_tensor input_tensor,
+imgdnn_tensor ImgdnnManager::createBatchNormLayer(imgdnn_tensor input_tensor,
                                                    const void *const avg_in,
                                                    const void *const var_in,
                                                    const float eps) {
@@ -194,20 +156,17 @@ imgdnn_tensor ConvNetBuilder::createBatchNormLayer(imgdnn_tensor input_tensor,
   av_desc.size[0] = in_desc.size[0];
   av_desc.size[1] = in_desc.size[1];
 
-  buffer_size = imgdnnGetDescriptorSize(&av_desc, &err);
-  avg_data.push_back(reinterpret_cast<float *>(calloc(1, buffer_size)));
-  memcpy(avg_data.back(), avg_in, buffer_size);
   average_tensor =
-      imgdnnNetworkFixedInput(net, &av_desc, avg_data.back(), &err);
+      createFixedInputTensor(&av_desc, avg_in, true);
 
   broadcast2_tensor =
-      imgdnnNetworkBroadcastOp(net, average_tensor, 2, in_desc.size[2], &err);
+      imgdnnNetworkBroadcastOp(net_, average_tensor, 2, in_desc.size[2], &err_);
 
   broadcast3_tensor = imgdnnNetworkBroadcastOp(
-      net, broadcast2_tensor, 3, in_desc.size[3], &err);
+      net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
 
   bna_tensor = imgdnnNetworkBinaryOp(
-      net, input_tensor, broadcast3_tensor, IMGDNN_OPERATION_SUB, &err);
+      net_, input_tensor, broadcast3_tensor, IMGDNN_OPERATION_SUB, &err_);
 
   imgdnn_tensor variance_tensor;
   imgdnn_tensor_descriptor va_desc;
@@ -217,36 +176,31 @@ imgdnn_tensor ConvNetBuilder::createBatchNormLayer(imgdnn_tensor input_tensor,
   va_desc.size[0] = in_desc.size[0];
   va_desc.size[1] = in_desc.size[1];
 
-  buffer_size = imgdnnGetDescriptorSize(&va_desc, &err);
-  var_data.push_back(reinterpret_cast<float *>(calloc(1, buffer_size)));
-  memcpy(var_data.back(), var_in, buffer_size);
-
+  buffer_size = imgdnnGetDescriptorSize(&va_desc, &err_);
+  float *variance = reinterpret_cast<float *>(GetBufromPool(buffer_size));
+  memcpy(variance, var_in, buffer_size);
   // Perform 1/sqrt(var+eps) and Update var_data.
-  {
-    buffer_size /= sizeof(float);
-    float *variance = var_data.back();
-    for (size_t i = 0; i < buffer_size; i++) {
-      variance[i] = 1.0 / (sqrt(variance[i] + eps));
-    }
+  buffer_size /= sizeof(float);
+  for (size_t i = 0; i < buffer_size; i++) {
+    variance[i] = 1.0 / (sqrt(variance[i] + eps));
   }
-
   variance_tensor =
-      imgdnnNetworkFixedInput(net, &va_desc, var_data.back(), &err);
+      createFixedInputTensor(&va_desc, variance, false);
 
   broadcast2_tensor =
-      imgdnnNetworkBroadcastOp(net, variance_tensor, 2, in_desc.size[2], &err);
+      imgdnnNetworkBroadcastOp(net_, variance_tensor, 2, in_desc.size[2], &err_);
 
   broadcast3_tensor = imgdnnNetworkBroadcastOp(
-      net, broadcast2_tensor, 3, in_desc.size[3], &err);
+      net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
 
   imgdnn_tensor bn_tensor;
   bn_tensor = imgdnnNetworkBinaryOp(
-      net, bna_tensor, broadcast3_tensor, IMGDNN_OPERATION_MUL, &err);
+      net_, bna_tensor, broadcast3_tensor, IMGDNN_OPERATION_MUL, &err_);
 
   return bn_tensor;
 }
 
-imgdnn_tensor ConvNetBuilder::createPoolingLayer(
+imgdnn_tensor ImgdnnManager::createPoolingLayer(
     imgdnn_tensor in_tensor,
     imgdnn_quant_param dst_quant_param,
     const unsigned int size[2],
@@ -259,7 +213,7 @@ imgdnn_tensor ConvNetBuilder::createPoolingLayer(
   imgdnnGetTensorDescriptor(in_tensor, &desc_1);
 
   imgdnn_tensor pool_tensor = imgdnnNetworkPooling2dOp_v2(
-      net, in_tensor, size, stride, pad_to_begin, pad_to_end, type, &err);
+      net_, in_tensor, size, stride, pad_to_begin, pad_to_end, type, &err_);
   // debug
   imgdnnGetTensorDescriptor(pool_tensor, &desc_1);
 
@@ -267,13 +221,13 @@ imgdnn_tensor ConvNetBuilder::createPoolingLayer(
   imgdnnGetTensorDescriptor(in_tensor, &desc);
   if (desc.type == IMGDNN_TYPE_Q_I8 || desc.type == IMGDNN_TYPE_Q_U8) {
     pool_tensor = imgdnnNetworkCastOp(
-        net, pool_tensor, desc.type, &dst_quant_param, &err);
+        net_, pool_tensor, desc.type, &dst_quant_param, &err_);
   }
 
   return pool_tensor;
 }
 
-imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
+imgdnn_tensor ImgdnnManager::createFullyConnectedLayer(
     imgdnn_tensor input_tensor,
     imgdnn_tensor weights_tensor,
     imgdnn_tensor bias_tensor,
@@ -284,12 +238,13 @@ imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
   imgdnn_tensor_descriptor in_desc;
   imgdnnGetTensorDescriptor(input_tensor, &in_desc);
 
+  //int flatten_dim = 1
   for (unsigned i = 2; i < in_desc.dimensions; ++i)
     in_desc.size[1] *= in_desc.size[i];
   in_desc.dimensions = 2;
 
   auto reshaped_input =
-      imgdnnNetworkReshapeOp(net, input_tensor, &in_desc, &err);
+      imgdnnNetworkReshapeOp(net_, input_tensor, &in_desc, &err_);
 
   // debug
   imgdnn_tensor_descriptor desc_1;
@@ -304,20 +259,20 @@ imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
   auto isnu_weights_tensor = imgdnnNetworkTransposeOp(net,
                                                       weights_tensor,
                                                       order,
-                                                      &err);*/
+                                                      &err_);*/
 
   fcw_tensor = imgdnnNetworkBinaryOp(
-      net, reshaped_input, weights_tensor, IMGDNN_OPERATION_MATMUL, &err);
+      net_, reshaped_input, weights_tensor, IMGDNN_OPERATION_MATMUL, &err_);
 
   if (bias_tensor) {
     imgdnn_tensor fcw_int_tensor =
-        imgdnnNetworkCastOp(net, fcw_tensor, IMGDNN_TYPE_I32, nullptr, &err);
+        imgdnnNetworkCastOp(net_, fcw_tensor, IMGDNN_TYPE_I32, nullptr, &err_);
 
     imgdnn_tensor_descriptor desc_4;
     imgdnnGetTensorDescriptor(fcw_int_tensor, &desc_4);
 
     fcb_tensor = imgdnnNetworkBinaryOp(
-        net, fcw_int_tensor, bias_tensor, IMGDNN_OPERATION_ADD, &err);
+        net_, fcw_int_tensor, bias_tensor, IMGDNN_OPERATION_ADD, &err_);
   } else {
     fcb_tensor = fcw_tensor;
   }
@@ -326,13 +281,13 @@ imgdnn_tensor ConvNetBuilder::createFullyConnectedLayer(
   imgdnnGetTensorDescriptor(input_tensor, &desc);
   if (desc.type == IMGDNN_TYPE_Q_I8 || desc.type == IMGDNN_TYPE_Q_U8) {
     fcb_tensor =
-        imgdnnNetworkCastOp(net, fcb_tensor, desc.type, &dst_quant_param, &err);
+        imgdnnNetworkCastOp(net_, fcb_tensor, desc.type, &dst_quant_param, &err_);
   }
 
   return fcb_tensor;
 }
 
-imgdnn_tensor ConvNetBuilder::createSoftmaxLayer(
+imgdnn_tensor ImgdnnManager::createSoftmaxLayer(
     imgdnn_tensor input_tensor,
     float beta,
     unsigned int axis,
@@ -342,12 +297,12 @@ imgdnn_tensor ConvNetBuilder::createSoftmaxLayer(
   imgdnnGetTensorDescriptor(input_tensor, &desc_1);
 
   imgdnn_tensor softmax_tensor =
-      imgdnnNetworkSoftmaxOp(net, input_tensor, beta, axis, &err);
+      imgdnnNetworkSoftmaxOp(net_, input_tensor, beta, axis, &err_);
   imgdnn_tensor_descriptor desc;
   imgdnnGetTensorDescriptor(input_tensor, &desc);
   if (desc.type == IMGDNN_TYPE_Q_I8 || desc.type == IMGDNN_TYPE_Q_U8) {
     softmax_tensor = imgdnnNetworkCastOp(
-        net, softmax_tensor, desc.type, &dst_quant_param, &err);
+        net_, softmax_tensor, desc.type, &dst_quant_param, &err_);
   }
 
   imgdnn_tensor_descriptor desc_2;
@@ -356,7 +311,7 @@ imgdnn_tensor ConvNetBuilder::createSoftmaxLayer(
   return softmax_tensor;
 }
 
-imgdnn_tensor ConvNetBuilder::createScaleLayer(imgdnn_tensor input_tensor,
+imgdnn_tensor ImgdnnManager::createScaleLayer(imgdnn_tensor input_tensor,
                                                bool with_biasscale,
                                                const void *const scale,
                                                const void *const bias) {
@@ -377,47 +332,41 @@ imgdnn_tensor ConvNetBuilder::createScaleLayer(imgdnn_tensor input_tensor,
   sc_desc.size[0] = in_desc.size[0];
   sc_desc.size[1] = in_desc.size[1];
 
-  buffer_size = imgdnnGetDescriptorSize(&sc_desc, &err);
-  sc_data.push_back(reinterpret_cast<float *>(calloc(1, buffer_size)));
-  memcpy(sc_data.back(), scale, buffer_size);
-  scale_tensor = imgdnnNetworkFixedInput(net, &sc_desc, sc_data.back(), &err);
+  scale_tensor = createFixedInputTensor(&sc_desc, scale, true);
 
   broadcast2_tensor =
-      imgdnnNetworkBroadcastOp(net, scale_tensor, 2, in_desc.size[2], &err);
+      imgdnnNetworkBroadcastOp(net_, scale_tensor, 2, in_desc.size[2], &err_);
 
   broadcast3_tensor = imgdnnNetworkBroadcastOp(
-      net, broadcast2_tensor, 3, in_desc.size[3], &err);
+      net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
 
   sc_tensor = imgdnnNetworkBinaryOp(
-      net, input_tensor, broadcast3_tensor, IMGDNN_OPERATION_MUL, &err);
+      net_, input_tensor, broadcast3_tensor, IMGDNN_OPERATION_MUL, &err_);
 
   if (with_biasscale) {
     imgdnn_tensor bsc_tensor;
     imgdnn_tensor biasscale_tensor;
 
-    buffer_size = imgdnnGetDescriptorSize(&sc_desc, &err);
-    bsc_data.push_back(reinterpret_cast<float *>(calloc(1, buffer_size)));
-    memcpy(bsc_data.back(), bias, buffer_size);
     biasscale_tensor =
-        imgdnnNetworkFixedInput(net, &sc_desc, bsc_data.back(), &err);
+        createFixedInputTensor(&sc_desc, bias, true);
 
     broadcast2_tensor = imgdnnNetworkBroadcastOp(
-        net, biasscale_tensor, 2, in_desc.size[2], &err);
+        net_, biasscale_tensor, 2, in_desc.size[2], &err_);
 
     broadcast3_tensor = imgdnnNetworkBroadcastOp(
-        net, broadcast2_tensor, 3, in_desc.size[3], &err);
+        net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
 
     bsc_tensor = imgdnnNetworkBinaryOp(
-        net, sc_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err);
+        net_, sc_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err_);
     return bsc_tensor;
   } else {
     return sc_tensor;
   }
 }
 
-imgdnn_network_object ConvNetBuilder::createNetworkObject(
-    imgdnn_device device,
-    imgdnn_context context,
+imgdnn_network_object ImgdnnManager::createNetworkObject(
+    //imgdnn_device device,
+    //imgdnn_context context,
     unsigned int num_inputs,
     imgdnn_tensor *inputs,
     unsigned int num_outputs,
@@ -434,24 +383,20 @@ imgdnn_network_object ConvNetBuilder::createNetworkObject(
   options_str += " --dump_debug_binaries enabled";
 
   imgdnn_network_object net_obj;
-  net_obj = imgdnnCreateNetworkObject(device,
-                                      context,
-                                      net,
+  net_obj = imgdnnCreateNetworkObject(device_,
+                                      context_,
+                                      net_,
                                       num_inputs,
                                       inputs,
                                       num_outputs,
                                       outputs,
                                       flags,
                                       options_str.c_str(),
-                                      &err);
-
-  if (err == IMGDNN_SUCCESS)
-    return net_obj;
-  else
-    return nullptr;
+                                      &err_);
+  ASSERT(err_ != IMGDNN_SUCCESS, "CreateNetworkObject failed!");
+  return net_obj;
 }
 
 }  // namespace nna
-}  // namespace subgraph
 }  // namespace lite
 }  // namespace paddle

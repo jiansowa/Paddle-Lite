@@ -23,7 +23,8 @@
 #include "imgdnn.h"  // NOLINT
 #include "lite/core/op_lite.h"
 #include "lite/core/tensor.h"
-#include "nn_builder.h"  // NOLINT
+//#include "nn_builder.h"  // NOLINT
+#include "lite/backends/nna/imgdnn_manager.h"
 #include "utility.h"     // NOLINT
 
 namespace paddle {
@@ -77,12 +78,11 @@ class Node {
 
 class Graph {
  public:
-  // imgdnn_tensor in;
-  // imgdnn_tensor weight;
-  // imgdnn_tensor out;
-  std::vector<uint8_t> weights_u8;
+  explicit Graph(lite::nna::ImgdnnManager *pMgr) {
+    pImgdnnMgr = pMgr;
+    std::cout << "graph construct" << std::endl;
+  }
 
-  Graph() { std::cout << "graph construct" << std::endl; }
   ~Graph() {
     std::cout << "Graph deconst" << std::endl;
     for (auto buf : coef_pool) delete[] buf;
@@ -133,7 +133,10 @@ class Graph {
     return nodes_.find(name) != nodes_.end();
   }
 
-  ConvNetBuilder& GetBuilder() { return builder_; }
+  lite::nna::ImgdnnManager* GetBuilder() {
+    ASSERT(pImgdnnMgr == nullptr, "pImgdnnMgr used before initialize");
+    return pImgdnnMgr;
+  }
 
   uint8_t* GetBufromPool(int size) {
     uint8_t* buf = new uint8_t[size];
@@ -144,7 +147,7 @@ class Graph {
  private:
   std::vector<uint8_t*> coef_pool;
   std::unordered_map<std::string, std::vector<std::shared_ptr<Node>>> nodes_;
-  ConvNetBuilder builder_;
+  lite::nna::ImgdnnManager *pImgdnnMgr{nullptr};
 };
 }  // namespace nna
 

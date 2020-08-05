@@ -20,6 +20,7 @@
 #include "imgdnn.h"  // NOLINT
 #include "lite/core/kernel.h"
 #include "lite/kernels/nna/bridges/graph.h"
+#include "lite/backends/nna/imgdnn_manager.h"
 #include "lite/kernels/npu/bridges/engine.h"
 #include "lite/kernels/npu/bridges/registry.h"
 
@@ -37,19 +38,9 @@ class SubgraphEngine : public subgraph::Engine {
                  const std::vector<std::string> &output_names,
                  Scope *scope)
       : subgraph::Engine(
-            ctx, block_idx, block_desc, input_names, output_names, scope) {
-    network_obj_ = nullptr;
-    context_ = nullptr;
-    binding_ = nullptr;
-  }
+            ctx, block_idx, block_desc, input_names, output_names, scope) {}
 
-  ~SubgraphEngine() {
-    imgdnn_err_code err;
-    if (network_obj_) err = imgdnnNetworkObjectDestroy(network_obj_);
-    if (context_) err = imgdnnContextDestroy(context_);
-    if (binding_) err = imgdnnBindingDestroy(binding_);
-    CHECK_EQ(err, IMGDNN_SUCCESS);
-  }
+  ~SubgraphEngine() {}
 
  protected:
   int BuildDeviceProgram() override;
@@ -59,9 +50,7 @@ class SubgraphEngine : public subgraph::Engine {
   std::vector<std::string> device_onames_;
   std::vector<imgdnn_input> device_itensors_;
   std::vector<imgdnn_output> device_otensors_;
-  imgdnn_binding binding_{nullptr};
-  imgdnn_context context_{nullptr};
-  imgdnn_network_object network_obj_{nullptr};
+  lite::nna::ImgdnnManager imgdnn_mgr_;
 };
 
 class SubgraphCompute

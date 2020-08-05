@@ -19,9 +19,10 @@ message(STATUS "ENTER nna bridge")
 
 lite_cc_library(subgraph_bridge_utility_nna SRCS utility.cc DEPS ${nna_builder_libs} ${nna_runtime_libs} tensor)
 lite_cc_library(subgraph_bridge_graph_nna SRCS graph.cc DEPS subgraph_bridge_utility_nna)
-lite_cc_library(subgraph_bridge_network_nna SRCS nn_builder.cc DEPS subgraph_bridge_utility_nna)
+#lite_cc_library(subgraph_bridge_network_nna SRCS nn_builder.cc DEPS subgraph_bridge_utility_nna)
 
-set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna subgraph_bridge_network_nna)
+#set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna subgraph_bridge_network_nna)
+set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna)
 
 #lite_cc_library(subgraph_bridge_fc_op_nna SRCS fc_op.cc DEPS ${nna_subgraph_bridge_deps})
 lite_cc_library(subgraph_bridge_conv_op_nna SRCS conv_op.cc DEPS ${nna_subgraph_bridge_deps})

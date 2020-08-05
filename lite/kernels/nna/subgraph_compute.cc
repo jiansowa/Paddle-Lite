@@ -32,7 +32,7 @@ int SubgraphEngine::BuildDeviceProgram() {
   int status = 0;
   // Convert all of ops and their input vars and weights and added into the NNA
   // IMG IR graph
-  subgraph::nna::Graph graph;
+  subgraph::nna::Graph graph{&imgdnn_mgr_};
   const auto& bridges = subgraph::Registry::Instance();
   for (auto& inst : origin_program_) {
     auto op = const_cast<OpLite*>(inst.op());
@@ -83,35 +83,21 @@ int SubgraphEngine::BuildDeviceProgram() {
   CHECK(!device_onames_.empty())
       << "[NNA] No output nodes found for building NNA model";
 
-  subgraph::nna::ConvNetBuilder& builder = graph.GetBuilder();
-
-  imgdnn_err_code err;
-  imgdnn_device device;
-  unsigned int num_devices;
-  imgdnnGetDevices(IMGDNN_DEVICE_TYPE_ALL, 1, &device, &num_devices);
-  context_ = imgdnnCreateContext(num_devices, &device, 0, &err);
-
-  network_obj_ = builder.createNetworkObject(device,
-                                             context_,
-                                             device_inodes.size(),
-                                             device_inodes.data(),
-                                             device_onodes.size(),
-                                             device_onodes.data());
-  if (network_obj_ == nullptr) VLOG(3) << "Create network object fails";
+  imgdnn_mgr_.createNetworkObject(device_inodes.size(),
+                                  device_inodes.data(),
+                                  device_onodes.size(),
+                                  device_onodes.data());
 
   // inputs
   unsigned int num_inputs, num_outputs;
-  err = imgdnnNetworkObjectGetInputs(network_obj_,
-                                     std::numeric_limits<unsigned int>::max(),
-                                     nullptr,
-                                     &num_inputs);
-  // CHECK_EQ(err,IMGDNN_SUCCESS) << "imgdnn networkObj get inputs fails";
+  imgdnn_mgr_.getNetworkObjectInputs(std::numeric_limits<unsigned int>::max(),
+      nullptr, &num_inputs);
   CHECK_EQ(num_inputs, device_inames_.size());
   origin_idims_.resize(num_inputs);
   origin_itensors_.resize(num_inputs);
   device_itensors_.resize(num_inputs);
-  err = imgdnnNetworkObjectGetInputs(
-      network_obj_, num_inputs, device_itensors_.data(), nullptr);
+  imgdnn_mgr_.getNetworkObjectInputs(num_inputs, device_itensors_.data(),
+      nullptr);
   for (int i = 0; i < num_inputs; i++) {
     auto node = graph.Get(device_inames_[i]);
     auto type = node->type();
@@ -124,17 +110,14 @@ int SubgraphEngine::BuildDeviceProgram() {
   }
 
   // outputs
-  err = imgdnnNetworkObjectGetOutputs(network_obj_,
-                                      std::numeric_limits<unsigned int>::max(),
-                                      nullptr,
-                                      &num_outputs);
-  // CHECK_EQ(err,IMGDNN_SUCCESS) << "imgdnn networkObj get outputs fails";
+  imgdnn_mgr_.getNetworkObjectOutputs(std::numeric_limits<unsigned int>::max(),
+      nullptr, &num_outputs);
   CHECK_EQ(num_outputs, device_onames_.size());
   origin_odims_.resize(num_outputs);
   origin_otensors_.resize(num_outputs);
   device_otensors_.resize(num_outputs);
-  err = imgdnnNetworkObjectGetOutputs(
-      network_obj_, num_outputs, device_otensors_.data(), nullptr);
+  imgdnn_mgr_.getNetworkObjectOutputs(num_outputs, device_otensors_.data(),
+      nullptr);
   for (int i = 0; i < num_outputs; i++) {
     auto node = graph.Get(device_onames_[i]);
     auto type = node->type();
@@ -166,14 +149,10 @@ int SubgraphEngine::BuildDeviceProgram() {
     }
   }
 
-  binding_ = imgdnnCreateBinding(&err);
-
   return status;
 }
 
 int SubgraphEngine::LaunchDeviceProgram() {
-  imgdnn_err_code err;
-
   // using the data of origin input tensors as the buffer
   // of imgdnn_input tensors
   imgdnn_input in;
@@ -192,13 +171,12 @@ int SubgraphEngine::LaunchDeviceProgram() {
     }
 
     in = device_itensors_[i];
-    in_desc = imgdnnGetInputDescriptor(in, &err);
-    in_size = imgdnnGetDescriptorSize(&in_desc, &err);
+    in_desc = imgdnn_mgr_.getInputDescriptor(in);
+    in_size = imgdnn_mgr_.getDescriptorSize(&in_desc);
     in_buf = static_cast<void*>(input_data);
     CHECK_EQ(in_size, origin_itensors_[i]->memory_size());
-    in_mem = imgdnnImportMemory(
-        context_, in_buf, in_size, IMGDNN_IMPORT_MEM_TYPE_CPU, &err);
-    err = imgdnnBindingAddInput(binding_, in, in_mem);
+    in_mem = imgdnn_mgr_.importMemory(in_buf, in_size);
+    imgdnn_mgr_.addBindingInput(in, in_mem);
   }
 
   // set output
@@ -210,31 +188,29 @@ int SubgraphEngine::LaunchDeviceProgram() {
   std::vector<size_t> out_mem_sizes;
   for (size_t i = 0; i < device_otensors_.size(); i++) {
     out = device_otensors_[i];
-    out_desc = imgdnnGetOutputDescriptor(out, &err);
-    out_size = imgdnnGetDescriptorSize(&out_desc, &err);
+    out_desc = imgdnn_mgr_.getOutputDescriptor(out);
+    out_size = imgdnn_mgr_.getDescriptorSize(&out_desc);
     CHECK_EQ(out_size, origin_otensors_[i]->memory_size());
-    out_mem = imgdnnAllocateMemory(context_, out_size, &err);
+    out_mem = imgdnn_mgr_.allocateMemory(out_size);
     out_mems.push_back(out_mem);
     out_mem_sizes.push_back(out_size);
-    err = imgdnnBindingAddOutput(binding_, out, out_mem);
+    imgdnn_mgr_.addBindingOutput(out, out_mem);
   }
 
   // Run the img model by name
-  err = imgdnnNetworkObjectExecute(
-      network_obj_, binding_, true, 0, nullptr, nullptr);
+  imgdnn_mgr_.executeNetworkObject(true, 0, nullptr, nullptr);
 
   // Copy the data of output tensor to the buffer of origin output tensors
   for (size_t i = 0; i < out_mems.size(); i++) {
     uint8_t* data = static_cast<uint8_t*>(
-        imgdnnMemoryLock(out_mems[i], IMGDNN_LOCK_ACCESS_READ_ONLY, &err));
+        imgdnn_mgr_.lockMemory(out_mems[i], IMGDNN_LOCK_ACCESS_READ_ONLY));
 
     int8_t* output_data = origin_otensors_[i]->mutable_data<int8_t>();
     for (size_t j = 0; j < out_mem_sizes[i]; j++) {
       output_data[j] = data[j] - 128;
     }
-    err = imgdnnMemoryUnlock(out_mems[i]);
-    // destroy the memory allocated (out_mem)
-    err = imgdnnMemoryDestroy(out_mems[i]);
+    imgdnn_mgr_.unlockMemory(out_mems[i]);
+    imgdnn_mgr_.destroyMemory(out_mems[i]);
   }
 
   return 0;

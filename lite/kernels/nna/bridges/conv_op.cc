@@ -78,7 +78,7 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
     weight_scale = op_info->GetAttr<std::vector<float>>("weight_scale");
   }
 
-  ConvNetBuilder &builder = graph->GetBuilder();
+
   // Input node
   std::shared_ptr<Node> input_node = nullptr;
   imgdnn_tensor in_tensor;
@@ -244,7 +244,9 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
   imgdnn_quant_param output_quant_param;
   output_quant_param.scale = output_scale;
   output_quant_param.zero_point = 128;
-  imgdnn_tensor conv_out = builder.createConvolutionLayer(in_tensor,
+
+  imgdnn_tensor conv_out = graph->GetBuilder()->createConvolutionLayer(
+                                                          in_tensor,
                                                           filter_tensor,
                                                           bias_tensor,
                                                           output_quant_param,
