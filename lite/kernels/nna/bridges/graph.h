@@ -23,7 +23,6 @@
 #include "imgdnn.h"  // NOLINT
 #include "lite/core/op_lite.h"
 #include "lite/core/tensor.h"
-//#include "nn_builder.h"  // NOLINT
 #include "lite/backends/nna/imgdnn_manager.h"
 #include "utility.h"     // NOLINT
 

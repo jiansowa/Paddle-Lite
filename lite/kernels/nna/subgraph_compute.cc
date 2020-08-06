@@ -17,7 +17,6 @@
 #include <time.h>
 #include <limits>
 #include <utility>
-#include "lite/backends/nna/device.h"
 #include "lite/core/op_registry.h"
 #include "lite/kernels/nna/bridges/graph.h"
 #include "lite/kernels/nna/bridges/paddle_use_bridges.h"
