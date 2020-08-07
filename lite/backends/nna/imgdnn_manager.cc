@@ -14,7 +14,6 @@
 
 #include "imgdnn_manager.h"  // NOLINT
 #include <utility>
-//#include "lite/kernels/nna/bridges/graph.h"
 
 namespace paddle {
 namespace lite {
@@ -51,11 +50,11 @@ ImgdnnManager::ImgdnnManager() {
   net_ = imgdnnCreateNetwork(&err_);
   ASSERT(err_ != IMGDNN_SUCCESS, "CreateNetwork failed!");
 
-  imgdnn_device device;
   unsigned int num_devices;
-  err_ = imgdnnGetDevices(IMGDNN_DEVICE_TYPE_ALL, 1, &device, &num_devices);
+  err_ = imgdnnGetDevices(IMGDNN_DEVICE_TYPE_ACCELERATOR, 1, &device_,
+      &num_devices);
   ASSERT(err_ != IMGDNN_SUCCESS, "GetDevices failed!");
-  context_ = imgdnnCreateContext(num_devices, &device, 0, &err_);
+  context_ = imgdnnCreateContext(num_devices, &device_, 0, &err_);
   ASSERT(err_ != IMGDNN_SUCCESS, "CreateContext failed!");
   binding_ = imgdnnCreateBinding(&err_);
   ASSERT(err_ != IMGDNN_SUCCESS, "CreateBinding failed!");
@@ -105,21 +104,21 @@ imgdnn_tensor ImgdnnManager::createConvolutionLayer(
   imgdnn_tensor conv2d_tensor;
   if (bias_tensor) {
     imgdnn_tensor convw_int_tensor =
-        imgdnnNetworkCastOp(net_, convw_tensor, IMGDNN_TYPE_I32, nullptr, &err_);
+      imgdnnNetworkCastOp(net_, convw_tensor, IMGDNN_TYPE_I32, nullptr, &err_);
 
     imgdnn_tensor_descriptor bias_desc;
     imgdnnGetTensorDescriptor(convw_tensor, &bias_desc);
 
     imgdnn_tensor broadcast2_tensor;
     broadcast2_tensor =
-        imgdnnNetworkBroadcastOp(net_, bias_tensor, 2, bias_desc.size[2], &err_);
+      imgdnnNetworkBroadcastOp(net_, bias_tensor, 2, bias_desc.size[2], &err_);
 
     imgdnn_tensor broadcast3_tensor;
     broadcast3_tensor = imgdnnNetworkBroadcastOp(
         net_, broadcast2_tensor, 3, bias_desc.size[3], &err_);
 
     conv2d_tensor = imgdnnNetworkBinaryOp(
-        net_, convw_int_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err_);
+      net_, convw_int_tensor, broadcast3_tensor, IMGDNN_OPERATION_ADD, &err_);
   } else {
     conv2d_tensor = convw_tensor;
   }
@@ -160,7 +159,7 @@ imgdnn_tensor ImgdnnManager::createBatchNormLayer(imgdnn_tensor input_tensor,
       createFixedInputTensor(&av_desc, avg_in, true);
 
   broadcast2_tensor =
-      imgdnnNetworkBroadcastOp(net_, average_tensor, 2, in_desc.size[2], &err_);
+    imgdnnNetworkBroadcastOp(net_, average_tensor, 2, in_desc.size[2], &err_);
 
   broadcast3_tensor = imgdnnNetworkBroadcastOp(
       net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
@@ -188,7 +187,7 @@ imgdnn_tensor ImgdnnManager::createBatchNormLayer(imgdnn_tensor input_tensor,
       createFixedInputTensor(&va_desc, variance, false);
 
   broadcast2_tensor =
-      imgdnnNetworkBroadcastOp(net_, variance_tensor, 2, in_desc.size[2], &err_);
+    imgdnnNetworkBroadcastOp(net_, variance_tensor, 2, in_desc.size[2], &err_);
 
   broadcast3_tensor = imgdnnNetworkBroadcastOp(
       net_, broadcast2_tensor, 3, in_desc.size[3], &err_);
@@ -238,7 +237,7 @@ imgdnn_tensor ImgdnnManager::createFullyConnectedLayer(
   imgdnn_tensor_descriptor in_desc;
   imgdnnGetTensorDescriptor(input_tensor, &in_desc);
 
-  //int flatten_dim = 1
+  // int flatten_dim = 1
   for (unsigned i = 2; i < in_desc.dimensions; ++i)
     in_desc.size[1] *= in_desc.size[i];
   in_desc.dimensions = 2;
@@ -281,7 +280,7 @@ imgdnn_tensor ImgdnnManager::createFullyConnectedLayer(
   imgdnnGetTensorDescriptor(input_tensor, &desc);
   if (desc.type == IMGDNN_TYPE_Q_I8 || desc.type == IMGDNN_TYPE_Q_U8) {
     fcb_tensor =
-        imgdnnNetworkCastOp(net_, fcb_tensor, desc.type, &dst_quant_param, &err_);
+      imgdnnNetworkCastOp(net_, fcb_tensor, desc.type, &dst_quant_param, &err_);
   }
 
   return fcb_tensor;
@@ -365,8 +364,6 @@ imgdnn_tensor ImgdnnManager::createScaleLayer(imgdnn_tensor input_tensor,
 }
 
 imgdnn_network_object ImgdnnManager::createNetworkObject(
-    //imgdnn_device device,
-    //imgdnn_context context,
     unsigned int num_inputs,
     imgdnn_tensor *inputs,
     unsigned int num_outputs,
@@ -382,8 +379,7 @@ imgdnn_network_object ImgdnnManager::createNetworkObject(
   options_str += " -m " + mapconfig;
   options_str += " --dump_debug_binaries enabled";
 
-  imgdnn_network_object net_obj;
-  net_obj = imgdnnCreateNetworkObject(device_,
+  net_obj_ = imgdnnCreateNetworkObject(device_,
                                       context_,
                                       net_,
                                       num_inputs,
@@ -394,7 +390,7 @@ imgdnn_network_object ImgdnnManager::createNetworkObject(
                                       options_str.c_str(),
                                       &err_);
   ASSERT(err_ != IMGDNN_SUCCESS, "CreateNetworkObject failed!");
-  return net_obj;
+  return net_obj_;
 }
 
 }  // namespace nna
