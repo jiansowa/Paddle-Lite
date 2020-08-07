@@ -544,6 +544,7 @@ void SubgraphFuser::ReplaceNodesWithSubgraphs(SSAGraph *graph,
       InsertNewNode(graph, subgraph_idx, subgraphs[subgraph_idx]);
     }
   }
+  SubgraphVisualizer(graph, subgraphs)();
 }
 
 void SubgraphFuser::operator()() {
