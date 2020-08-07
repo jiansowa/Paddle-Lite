@@ -66,6 +66,7 @@ class ImgdnnManager {
   ImgdnnManager();
 
   virtual ~ImgdnnManager() {
+    std::cout << "~ImgdnnManager called" << std::endl;
     if (net_obj_) err_ = imgdnnNetworkObjectDestroy(net_obj_);
     if (context_) err_ = imgdnnContextDestroy(context_);
     if (binding_) err_ = imgdnnBindingDestroy(binding_);

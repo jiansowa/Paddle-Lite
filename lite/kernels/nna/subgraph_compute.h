@@ -62,7 +62,10 @@ class SubgraphCompute
 
   void Run() override;
 
-  virtual ~SubgraphCompute() = default;
+  virtual ~SubgraphCompute()  {  // = default;
+    std::cout << "~SubgraphCompute" << std::endl;
+    engine_.reset();
+  }
 
  private:
   std::unique_ptr<SubgraphEngine> engine_;
