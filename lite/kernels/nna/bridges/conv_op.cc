@@ -60,6 +60,9 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
       op_info->HasAttr("with_act") && op_info->GetAttr<bool>("with_act");
   std::string act_type =
       with_act ? op_info->GetAttr<std::string>("act_type") : "";
+  float leaky_relu_alpha = act_type == "leaky_relu"
+                               ? op_info->GetAttr<float>("leaky_relu_alpha")
+                               : 0.f;
 
   CHECK_EQ(strides.size(), 2L);
   CHECK_EQ(dilations.size(), 2L);
@@ -77,7 +80,6 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
     output_scale = op_info->GetAttr<float>("output_scale");
     weight_scale = op_info->GetAttr<std::vector<float>>("weight_scale");
   }
-
 
   // Input node
   std::shared_ptr<Node> input_node = nullptr;
@@ -256,11 +258,24 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
                                                           img_dilation,
                                                           is_depthwise_mode);
 
-  imgdnn_tensor_descriptor desc;
-  imgdnn_err_code err = imgdnnGetTensorDescriptor(conv_out, &desc);
-  CHECK(err == IMGDNN_SUCCESS) << "fail get tensor description(CONV)";
-
-  graph->Add(output_name, conv_out, desc.type);
+  if (!act_type.empty()) {
+    imgdnn_tensor act_out;
+    if (act_type == "leaky_relu") {
+      act_out = graph->GetBuilder()->createReLULayer(conv_out,
+         false, 0.0, false, 0.0, leaky_relu_alpha);
+    } else if (act_type == "relu6") {
+      act_out = graph->GetBuilder()->createReLULayer(conv_out,
+         true, 0.0, true, 6.0, false);
+    } else if (act_type == "relu") {
+      act_out = graph->GetBuilder()->createReLULayer(conv_out,
+         true, 0.0, false, 0.0, false);
+    } else {
+      VLOG(3) << "act_type: " << act_type << " Not handled";
+    }
+    graph->Add(output_name, act_out, IMGDNN_TYPE_Q_U8);
+  } else {
+    graph->Add(output_name, conv_out, IMGDNN_TYPE_Q_U8);
+  }
 
   return REBUILD_WHEN_SHAPE_CHANGED;
 }

@@ -135,8 +135,21 @@ class ImgdnnManager {
                                   bool has_max_clamp,
                                   float max_clamp,
                                   float negative_slope) {
-    return imgdnnNetworkReLUOp(net_, in_tensor, has_min_clamp, min_clamp,
-        has_max_clamp, max_clamp, negative_slope, &err_);
+    imgdnn_tensor relu_tensor = imgdnnNetworkReLUOp(net_, in_tensor,
+        has_min_clamp, min_clamp, has_max_clamp, max_clamp,
+        negative_slope, &err_);
+    ASSERT(err_ != IMGDNN_SUCCESS, "ReLU OP fails");
+
+    imgdnn_tensor_descriptor in_desc, relu_desc;
+    imgdnnGetTensorDescriptor(in_tensor, &in_desc);
+    imgdnnGetTensorDescriptor(relu_tensor, &relu_desc);
+    if (relu_desc.type != in_desc.type) {
+      relu_tensor = imgdnnNetworkCastOp(
+        net_, relu_tensor, in_desc.type, &in_desc.quant_param, &err_);
+      ASSERT(err_ != IMGDNN_SUCCESS, "ReLU cast fails");
+    }
+
+    return relu_tensor;
   }
 
   imgdnn_network_object createNetworkObject(unsigned int num_inputs,
