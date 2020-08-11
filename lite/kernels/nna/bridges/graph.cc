@@ -131,7 +131,7 @@ std::shared_ptr<Node> Graph::Add(const std::string& name,
     out_tensor = pImgdnnMgr->createInputTensor(&desc);
   } else if (role == Node::Role::kConst) {
     const void* const_data = tensor.raw_data();
-    out_tensor = pImgdnnMgr->createFixedInputTensor(&desc, const_data, true);
+    out_tensor = pImgdnnMgr->createFixedInputTensor(&desc, const_data, false);
   } else {
     LOG(INFO) << "[NNA] invald role set in this path: " << name;
   }

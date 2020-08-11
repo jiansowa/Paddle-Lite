@@ -127,7 +127,8 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
   imgdnn_tensor filter_tensor;
   bool per_channel = isScalesPerChannel(weight_scale);
   TensorInfoReset(&qnt);
-  uint8_t *weights_u8 = graph->GetBufromPool(filter_dims.production());
+  uint8_t *weights_u8 = graph->GetBuilder()->GetBufromPool(
+      filter_dims.production());
   if (enable_int8) {
     char *weight_src = static_cast<char *>(filter->raw_data());
 
@@ -212,7 +213,8 @@ int ConvConverter(void *ctx, OpLite *op, KernelBase *kernel) {
         auto dtype_min = static_cast<int>(0 - dtype_max);
 
         int32_t *bias_qnt_data = reinterpret_cast<int32_t *>(
-            graph->GetBufromPool(bias_dims.production() * sizeof(int32_t)));
+            graph->GetBuilder()->GetBufromPool(bias_dims.production() * sizeof
+            (int32_t)));
         for (int i = 0; i < bias_data_size; i++) {
           float current_scale = per_channel ? qnt.scales[i] : qnt.scales[0];
           bias_qnt_data[i] =

@@ -56,12 +56,6 @@ class ImgdnnManager {
 
   std::vector<uint8_t*> coef_pool;
 
-  uint8_t * GetBufromPool(size_t size) {
-    uint8_t* buf = new uint8_t[size];
-    coef_pool.push_back(buf);
-    return buf;
-  }
-
  public:
   ImgdnnManager();
 
@@ -73,6 +67,12 @@ class ImgdnnManager {
     if (net_) err_ = imgdnnNetworkDestroy(net_);
 
     for (auto buf : coef_pool) delete[] buf;
+  }
+
+  uint8_t * GetBufromPool(size_t size) {
+    uint8_t* buf = new uint8_t[size];
+    coef_pool.push_back(buf);
+    return buf;
   }
 
   imgdnn_network GetNetwork() { return net_; }

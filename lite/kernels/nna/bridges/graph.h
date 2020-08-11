@@ -84,7 +84,6 @@ class Graph {
 
   ~Graph() {
     std::cout << "Graph deconst" << std::endl;
-    for (auto buf : coef_pool) delete[] buf;
   }
 
   // Add 1
@@ -137,14 +136,7 @@ class Graph {
     return pImgdnnMgr;
   }
 
-  uint8_t* GetBufromPool(int size) {
-    uint8_t* buf = new uint8_t[size];
-    coef_pool.push_back(buf);
-    return buf;
-  }
-
  private:
-  std::vector<uint8_t*> coef_pool;
   std::unordered_map<std::string, std::vector<std::shared_ptr<Node>>> nodes_;
   lite::nna::ImgdnnManager *pImgdnnMgr{nullptr};
 };
