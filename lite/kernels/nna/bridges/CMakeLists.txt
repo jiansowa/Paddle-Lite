@@ -24,14 +24,14 @@ lite_cc_library(subgraph_bridge_graph_nna SRCS graph.cc DEPS subgraph_bridge_uti
 #set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna subgraph_bridge_network_nna)
 set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna)
 
-#lite_cc_library(subgraph_bridge_fc_op_nna SRCS fc_op.cc DEPS ${nna_subgraph_bridge_deps})
+lite_cc_library(subgraph_bridge_fc_op_nna SRCS fc_op.cc DEPS ${nna_subgraph_bridge_deps})
 lite_cc_library(subgraph_bridge_conv_op_nna SRCS conv_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_matmul_op_nna SRCS matmul_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_mul_op_nna SRCS mul_op.cc DEPS ${nna_subgraph_bridge_deps})
 lite_cc_library(subgraph_bridge_act_op_nna SRCS act_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_scale_op_nna SRCS scale_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_softmax_op_nna SRCS softmax_op.cc DEPS ${nna_subgraph_bridge_deps})
-#lite_cc_library(subgraph_bridge_pool_op_nna SRCS pool_op.cc DEPS ${nna_subgraph_bridge_deps})
+lite_cc_library(subgraph_bridge_pool_op_nna SRCS pool_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_batch_norm_op_nna SRCS batch_norm_op.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_elementwise_ops_nna SRCS elementwise_ops.cc DEPS ${nna_subgraph_bridge_deps})
 #lite_cc_library(subgraph_bridge_reshape_op_nna SRCS reshape_op.cc DEPS ${nna_subgraph_bridge_deps})
@@ -62,14 +62,14 @@ set(nna_subgraph_bridges
         subgraph_bridge_registry
         subgraph_bridge_utility_nna
         subgraph_bridge_graph_nna
-        #subgraph_bridge_fc_op_nna
+        subgraph_bridge_fc_op_nna
         subgraph_bridge_conv_op_nna
         #subgraph_bridge_matmul_op_nna
         #subgraph_bridge_mul_op_nna
         subgraph_bridge_act_op_nna
         #subgraph_bridge_scale_op_nna
         #subgraph_bridge_softmax_op_nna
-        #subgraph_bridge_pool_op_nna
+        subgraph_bridge_pool_op_nna
         #subgraph_bridge_batch_norm_op_nna
         #subgraph_bridge_elementwise_ops_nna
         #subgraph_bridge_reshape_op_nna

@@ -83,7 +83,7 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
   // weight tensor
   std::shared_ptr<Node> weight_node = nullptr;
   bool per_channel = isScalesPerChannel(weight_scale);
-  uint8_t* weights_u8 = graph->GetBufromPool(w_dims.production());
+  uint8_t* weights_u8 = graph->GetBuilder()->GetBufromPool(w_dims.production());
   if (enable_int8) {
     qnt.type = IMGDNN_TYPE_Q_U8;
     if (per_channel) {
@@ -137,7 +137,8 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
 
         auto* bias_data = bias->data<float, float>();
         int32_t *bias_qnt_data = reinterpret_cast<int32_t*>(
-            graph->GetBufromPool(bias_dims.production()*sizeof(int32_t));
+            graph->GetBuilder()->GetBufromPool(bias_dims.production()*sizeof
+              (int32_t)));
         for (int i = 0; i < n; i++) {
           float current_scale = per_channel ? qnt.scales[i] : qnt.scales[0];
           bias_qnt_data[i] =
@@ -167,6 +168,8 @@ int FCConverter(void* ctx, OpLite* op, KernelBase* kernel) {
   imgdnn_err_code err = imgdnnGetTensorDescriptor(fc_out_tensor, &desc);
   graph->Add(out_name, fc_out_tensor, desc.type);
   CHECK(err == IMGDNN_SUCCESS) << "fail get tensor description(FC)";
+
+  // reshape to out_dims
 
   return REBUILD_WHEN_SHAPE_CHANGED;
 }

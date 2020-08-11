@@ -117,8 +117,8 @@ int PoolConverter(void* ctx, OpLite* op, KernelBase* kernel) {
   imgdnn_quant_param output_quant_param;
   output_quant_param.scale = output_scale;
   output_quant_param.zero_point = 128;
-  ConvNetBuilder& builder = graph->GetBuilder();
-  imgdnn_tensor pooling_out = builder.createPoolingLayer(x_node->data(),
+  imgdnn_tensor pooling_out = graph->GetBuilder()->createPoolingLayer(
+                                                         x_node->data(),
                                                          output_quant_param,
                                                          img_ksize,
                                                          img_stride,

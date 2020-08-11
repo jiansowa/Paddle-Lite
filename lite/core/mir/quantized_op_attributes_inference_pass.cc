@@ -65,7 +65,7 @@ void QuantizedOpAttributesInferencePass::Apply(
       inst.mutable_op_info()->SetAttr("output_scale", output_scale / range);
     }
     if (op_info->HasAttr("output_scale")) {
-      if (op_type != "pool2d")
+      // if (op_type != "pool2d")
       inst.mutable_op_info()->SetAttr("enable_int8", true);
     }
   }
