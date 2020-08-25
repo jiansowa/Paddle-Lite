@@ -1,27 +1,10 @@
-#if(NOT LITE_WITH_NNA AND NOT LITE_WITH_XTCL AND NOT LITE_WITH_BM AND NOT LITE_WITH_RKNPU AND NOT LITE_WITH_MLU AND NOT LITE_WITH_APU)
-#  return()
-#endif()
-
-## subgraph_bridge_registry use code in npu
-#lite_cc_library(subgraph_bridge_registry
-#    SRCS registry.cc
-#    DEPS op)
-### subgraph_bridge_engine use code in npu
-#lite_cc_library(subgraph_bridge_engine
-#    SRCS engine.cc
-#    DEPS tensor op scope program)
-
 if(NOT LITE_WITH_NNA)
   return()
 endif()
 
-message(STATUS "ENTER nna bridge")
-
 lite_cc_library(subgraph_bridge_utility_nna SRCS utility.cc DEPS ${nna_builder_libs} ${nna_runtime_libs} tensor)
 lite_cc_library(subgraph_bridge_graph_nna SRCS graph.cc DEPS subgraph_bridge_utility_nna)
-#lite_cc_library(subgraph_bridge_network_nna SRCS nn_builder.cc DEPS subgraph_bridge_utility_nna)
 
-#set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna subgraph_bridge_network_nna)
 set(nna_subgraph_bridge_deps subgraph_bridge_registry subgraph_bridge_utility_nna subgraph_bridge_graph_nna)
 
 lite_cc_library(subgraph_bridge_fc_op_nna SRCS fc_op.cc DEPS ${nna_subgraph_bridge_deps})

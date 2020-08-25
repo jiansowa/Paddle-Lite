@@ -377,7 +377,7 @@ imgdnn_network_object ImgdnnManager::createNetworkObject(
   std::string mapconfig = ddk_root + "nna-tools/config/mapconfig_q8a.json";
   options_str += "-h " + hwconfig;
   options_str += " -m " + mapconfig;
-  options_str += " --dump_debug_binaries enabled";
+  // options_str += " --dump_debug_binaries enabled";
 
   net_obj_ = imgdnnCreateNetworkObject(device_,
                                       context_,

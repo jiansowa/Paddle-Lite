@@ -14,7 +14,7 @@
 
 #include "imgdnn.h"  // NOLINT
 #include "lite/kernels/nna/bridges/graph.h"
-#include "lite/kernels/nna/bridges/registry.h"
+#include "lite/kernels/npu/bridges/registry.h"
 
 namespace paddle {
 namespace lite {
